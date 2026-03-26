@@ -22,6 +22,13 @@
 
 #include "Ble.h"
 
+#if __has_include("BleVersion.gen.h")
+#include "BleVersion.gen.h"
+#endif
+#ifndef BLE_BUILD_ID
+#define BLE_BUILD_ID "unknown"
+#endif
+
 #ifdef LOVE_ANDROID
 #include "android/Ble.h"
 #elif defined(LOVE_IOS)
@@ -240,8 +247,14 @@ static int w_peers(lua_State *L)
 static int w_debugState(lua_State *L)
 {
 	std::string state;
-	luax_catchexcept(L, [&]() { state = instance()->getDebugState(); });
-	luax_pushstring(L, state);
+	std::string address;
+	luax_catchexcept(L, [&]() {
+		state = instance()->getDebugState();
+		address = instance()->getDeviceAddress();
+	});
+	std::string out = "build=" BLE_BUILD_ID "\n"
+		"address=" + address + "\n" + state;
+	luax_pushstring(L, out);
 	return 1;
 }
 

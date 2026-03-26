@@ -75,3 +75,4 @@ stamp-h1
 /testing/output/*.md
 /testing/output/actual/*.png
 /testing/output/difference/*.png
+src/modules/ble/BleVersion.gen.h

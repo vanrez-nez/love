@@ -2655,8 +2655,26 @@ struct love::ble::apple::Ble::Impl
 	for (NSString *key in [_notificationQueues allKeys])
 	{
 		CBCentral *central = _centralsByKey[key];
-		if (central != nil)
-			[self pumpNotificationQueueForCentral:central];
+		if (central == nil)
+		{
+			[_notificationQueues removeObjectForKey:key];
+			continue;
+		}
+
+		// §15.2 step 5: On notification sent callback —
+		// remove Fragment from queue, if queue not empty call PumpNotificationQueue.
+		// Drain as many fragments as the transmit buffer will accept.
+		NSMutableArray<NSData *> *queue = _notificationQueues[key];
+		while (queue.count > 0)
+		{
+			if (![_peripheralManager updateValue:queue.firstObject forCharacteristic:_hostCharacteristic onSubscribedCentrals:@[central]])
+				break;
+
+			[queue removeObjectAtIndex:0];
+		}
+
+		if (queue.count == 0)
+			[_notificationQueues removeObjectForKey:key];
 	}
 }
 
