@@ -319,6 +319,330 @@ void showRecordingPermissionMissingDialog()
 	env->DeleteLocalRef(activity);
 }
 
+bool hasBluetoothPermission()
+{
+	JNIEnv *env = (JNIEnv*) SDL_GetAndroidJNIEnv();
+	jobject activity = (jobject) SDL_GetAndroidActivity();
+	jclass clazz = env->GetObjectClass(activity);
+
+	static jmethodID methodID = env->GetMethodID(clazz, "hasBluetoothPermissions", "()Z");
+	jboolean result = false;
+
+	if (methodID == nullptr)
+		env->ExceptionClear();
+	else
+		result = env->CallBooleanMethod(activity, methodID);
+
+	env->DeleteLocalRef(activity);
+	env->DeleteLocalRef(clazz);
+
+	return result;
+}
+
+void requestBluetoothPermission()
+{
+	JNIEnv *env = (JNIEnv*) SDL_GetAndroidJNIEnv();
+	jobject activity = (jobject) SDL_GetAndroidActivity();
+	jclass clazz = env->GetObjectClass(activity);
+
+	static jmethodID methodID = env->GetMethodID(clazz, "requestBluetoothPermissions", "()V");
+
+	if (methodID == nullptr)
+		env->ExceptionClear();
+	else
+		env->CallVoidMethod(activity, methodID);
+
+	env->DeleteLocalRef(activity);
+	env->DeleteLocalRef(clazz);
+}
+
+bool hasBluetoothLE()
+{
+	JNIEnv *env = (JNIEnv*) SDL_GetAndroidJNIEnv();
+	jobject activity = (jobject) SDL_GetAndroidActivity();
+	jclass clazz = env->GetObjectClass(activity);
+
+	static jmethodID methodID = env->GetMethodID(clazz, "hasBluetoothLE", "()Z");
+	jboolean result = false;
+
+	if (methodID == nullptr)
+		env->ExceptionClear();
+	else
+		result = env->CallBooleanMethod(activity, methodID);
+
+	env->DeleteLocalRef(activity);
+	env->DeleteLocalRef(clazz);
+
+	return result;
+}
+
+std::string getBluetoothRadioState()
+{
+	JNIEnv *env = (JNIEnv*) SDL_GetAndroidJNIEnv();
+	jobject activity = (jobject) SDL_GetAndroidActivity();
+	jclass clazz = env->GetObjectClass(activity);
+
+	static jmethodID methodID = env->GetMethodID(clazz, "getBluetoothRadioState", "()Ljava/lang/String;");
+	std::string result("unsupported");
+
+	if (methodID == nullptr)
+	{
+		env->ExceptionClear();
+	}
+	else
+	{
+		jstring state = (jstring) env->CallObjectMethod(activity, methodID);
+
+		if (state != nullptr)
+		{
+			const char *chars = env->GetStringUTFChars(state, nullptr);
+			result = chars;
+			env->ReleaseStringUTFChars(state, chars);
+			env->DeleteLocalRef(state);
+		}
+	}
+
+	env->DeleteLocalRef(activity);
+	env->DeleteLocalRef(clazz);
+
+	return result;
+}
+
+std::string getBluetoothAdapterAddress()
+{
+	JNIEnv *env = (JNIEnv*) SDL_GetAndroidJNIEnv();
+	jobject activity = (jobject) SDL_GetAndroidActivity();
+	jclass clazz = env->GetObjectClass(activity);
+
+	static jmethodID methodID = env->GetMethodID(clazz, "getBluetoothAdapterAddress", "()Ljava/lang/String;");
+	std::string result;
+
+	if (methodID == nullptr)
+	{
+		env->ExceptionClear();
+	}
+	else
+	{
+		jstring address = (jstring) env->CallObjectMethod(activity, methodID);
+
+		if (address != nullptr)
+		{
+			const char *chars = env->GetStringUTFChars(address, nullptr);
+			result = chars != nullptr ? chars : "";
+			if (chars != nullptr)
+				env->ReleaseStringUTFChars(address, chars);
+			env->DeleteLocalRef(address);
+		}
+	}
+
+	env->DeleteLocalRef(activity);
+	env->DeleteLocalRef(clazz);
+
+	return result;
+}
+
+void bleApplyReliabilityConfig(double heartbeatInterval, int fragmentSpacingMs, int dedupWindow)
+{
+	JNIEnv *env = (JNIEnv*) SDL_GetAndroidJNIEnv();
+	jobject activity = (jobject) SDL_GetAndroidActivity();
+	jclass clazz = env->GetObjectClass(activity);
+
+	jmethodID methodID = env->GetMethodID(clazz, "bleApplyReliabilityConfig", "(DII)V");
+	if (methodID != nullptr)
+		env->CallVoidMethod(activity, methodID, heartbeatInterval, fragmentSpacingMs, dedupWindow);
+	else
+		env->ExceptionClear();
+
+	env->DeleteLocalRef(activity);
+	env->DeleteLocalRef(clazz);
+}
+
+std::string bleDebugState()
+{
+	JNIEnv *env = (JNIEnv*) SDL_GetAndroidJNIEnv();
+	jobject activity = (jobject) SDL_GetAndroidActivity();
+	jclass clazz = env->GetObjectClass(activity);
+
+	jmethodID methodID = env->GetMethodID(clazz, "bleDebugState", "()Ljava/lang/String;");
+	std::string result = "unavailable";
+	if (methodID != nullptr)
+	{
+		jstring jresult = (jstring) env->CallObjectMethod(activity, methodID);
+		if (jresult != nullptr)
+		{
+			const char *str = env->GetStringUTFChars(jresult, nullptr);
+			if (str != nullptr)
+			{
+				result = str;
+				env->ReleaseStringUTFChars(jresult, str);
+			}
+			env->DeleteLocalRef(jresult);
+		}
+	}
+	else
+		env->ExceptionClear();
+
+	env->DeleteLocalRef(activity);
+	env->DeleteLocalRef(clazz);
+	return result;
+}
+
+bool bleHost(const std::string &room, int maxClients, const std::string &transport)
+{
+	JNIEnv *env = (JNIEnv*) SDL_GetAndroidJNIEnv();
+	jobject activity = (jobject) SDL_GetAndroidActivity();
+	jclass clazz = env->GetObjectClass(activity);
+
+	jmethodID methodID = env->GetMethodID(clazz, "bleHost", "(Ljava/lang/String;ILjava/lang/String;)Z");
+	jboolean result = false;
+
+	if (methodID == nullptr)
+	{
+		env->ExceptionClear();
+	}
+	else
+	{
+		jstring jroom = env->NewStringUTF(room.c_str());
+		jstring jtransport = env->NewStringUTF(transport.c_str());
+		result = env->CallBooleanMethod(activity, methodID, jroom, maxClients, jtransport);
+		env->DeleteLocalRef(jroom);
+		env->DeleteLocalRef(jtransport);
+	}
+
+	env->DeleteLocalRef(activity);
+	env->DeleteLocalRef(clazz);
+
+	return result;
+}
+
+bool bleScan()
+{
+	JNIEnv *env = (JNIEnv*) SDL_GetAndroidJNIEnv();
+	jobject activity = (jobject) SDL_GetAndroidActivity();
+	jclass clazz = env->GetObjectClass(activity);
+
+	jmethodID methodID = env->GetMethodID(clazz, "bleScan", "()Z");
+	jboolean result = false;
+
+	if (methodID == nullptr)
+		env->ExceptionClear();
+	else
+		result = env->CallBooleanMethod(activity, methodID);
+
+	env->DeleteLocalRef(activity);
+	env->DeleteLocalRef(clazz);
+
+	return result;
+}
+
+bool bleJoin(const std::string &roomId)
+{
+	JNIEnv *env = (JNIEnv*) SDL_GetAndroidJNIEnv();
+	jobject activity = (jobject) SDL_GetAndroidActivity();
+	jclass clazz = env->GetObjectClass(activity);
+
+	jmethodID methodID = env->GetMethodID(clazz, "bleJoin", "(Ljava/lang/String;)Z");
+	jboolean result = false;
+
+	if (methodID == nullptr)
+	{
+		env->ExceptionClear();
+	}
+	else
+	{
+		jstring jroomId = env->NewStringUTF(roomId.c_str());
+		result = env->CallBooleanMethod(activity, methodID, jroomId);
+		env->DeleteLocalRef(jroomId);
+	}
+
+	env->DeleteLocalRef(activity);
+	env->DeleteLocalRef(clazz);
+
+	return result;
+}
+
+void bleLeave()
+{
+	JNIEnv *env = (JNIEnv*) SDL_GetAndroidJNIEnv();
+	jobject activity = (jobject) SDL_GetAndroidActivity();
+	jclass clazz = env->GetObjectClass(activity);
+
+	jmethodID methodID = env->GetMethodID(clazz, "bleLeave", "()V");
+	if (methodID == nullptr)
+		env->ExceptionClear();
+	else
+		env->CallVoidMethod(activity, methodID);
+
+	env->DeleteLocalRef(activity);
+	env->DeleteLocalRef(clazz);
+}
+
+bool bleBroadcast(const std::string &msgType, const std::vector<uint8_t> &payload)
+{
+	JNIEnv *env = (JNIEnv*) SDL_GetAndroidJNIEnv();
+	jobject activity = (jobject) SDL_GetAndroidActivity();
+	jclass clazz = env->GetObjectClass(activity);
+
+	jmethodID methodID = env->GetMethodID(clazz, "bleBroadcast", "(Ljava/lang/String;[B)Z");
+	jboolean result = false;
+
+	if (methodID == nullptr)
+	{
+		env->ExceptionClear();
+	}
+	else
+	{
+		jstring jmsgType = env->NewStringUTF(msgType.c_str());
+		jbyteArray jpayload = env->NewByteArray((jsize) payload.size());
+
+		if (jpayload != nullptr && !payload.empty())
+			env->SetByteArrayRegion(jpayload, 0, (jsize) payload.size(), (const jbyte *) payload.data());
+
+		result = env->CallBooleanMethod(activity, methodID, jmsgType, jpayload);
+		env->DeleteLocalRef(jmsgType);
+		env->DeleteLocalRef(jpayload);
+	}
+
+	env->DeleteLocalRef(activity);
+	env->DeleteLocalRef(clazz);
+
+	return result;
+}
+
+bool bleSend(const std::string &peerId, const std::string &msgType, const std::vector<uint8_t> &payload)
+{
+	JNIEnv *env = (JNIEnv*) SDL_GetAndroidJNIEnv();
+	jobject activity = (jobject) SDL_GetAndroidActivity();
+	jclass clazz = env->GetObjectClass(activity);
+
+	jmethodID methodID = env->GetMethodID(clazz, "bleSend", "(Ljava/lang/String;Ljava/lang/String;[B)Z");
+	jboolean result = false;
+
+	if (methodID == nullptr)
+	{
+		env->ExceptionClear();
+	}
+	else
+	{
+		jstring jpeerId = env->NewStringUTF(peerId.c_str());
+		jstring jmsgType = env->NewStringUTF(msgType.c_str());
+		jbyteArray jpayload = env->NewByteArray((jsize) payload.size());
+
+		if (jpayload != nullptr && !payload.empty())
+			env->SetByteArrayRegion(jpayload, 0, (jsize) payload.size(), (const jbyte *) payload.data());
+
+		result = env->CallBooleanMethod(activity, methodID, jpeerId, jmsgType, jpayload);
+		env->DeleteLocalRef(jpeerId);
+		env->DeleteLocalRef(jmsgType);
+		env->DeleteLocalRef(jpayload);
+	}
+
+	env->DeleteLocalRef(activity);
+	env->DeleteLocalRef(clazz);
+
+	return result;
+}
+
 /* A container for AssetManager Java object */
 class AssetManagerObject
 {

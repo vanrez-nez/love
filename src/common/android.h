@@ -26,6 +26,7 @@
 #ifdef LOVE_ANDROID
 
 #include <string>
+#include <vector>
 
 namespace love
 {
@@ -69,6 +70,32 @@ bool hasRecordingPermission();
 void requestRecordingPermission();
 
 void showRecordingPermissionMissingDialog();
+
+bool hasBluetoothPermission();
+
+void requestBluetoothPermission();
+
+bool hasBluetoothLE();
+
+std::string getBluetoothRadioState();
+
+std::string getBluetoothAdapterAddress();
+
+void bleApplyReliabilityConfig(double heartbeatInterval, int fragmentSpacingMs, int dedupWindow);
+
+std::string bleDebugState();
+
+bool bleHost(const std::string &room, int maxClients, const std::string &transport);
+
+bool bleScan();
+
+bool bleJoin(const std::string &roomId);
+
+void bleLeave();
+
+bool bleBroadcast(const std::string &msgType, const std::vector<uint8_t> &payload);
+
+bool bleSend(const std::string &peerId, const std::string &msgType, const std::vector<uint8_t> &payload);
 
 /**
  * Initialize Android AAsset virtual archive.

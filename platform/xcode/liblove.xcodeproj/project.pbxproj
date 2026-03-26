@@ -54,6 +54,14 @@
 		D91C76132DE3D088001FC408 /* spirv.hpp11 in Resources */ = {isa = PBXBuildFile; fileRef = D91C76102DE3D088001FC408 /* spirv.hpp11 */; };
 		D91C76152DE3D0A2001FC408 /* visibility.h in Headers */ = {isa = PBXBuildFile; fileRef = D91C76142DE3D0A2001FC408 /* visibility.h */; };
 		D923E7D3296B85B9002FF1B3 /* harfbuzz.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = D923E7D2296B85B9002FF1B3 /* harfbuzz.xcframework */; };
+		D9E110012F10010000B1E001 /* Ble.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D9E110112F10010000B1E001 /* Ble.cpp */; };
+		D9E110022F10010000B1E001 /* Ble.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D9E110112F10010000B1E001 /* Ble.cpp */; };
+		D9E110032F10010000B1E001 /* Codec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D9E110132F10010000B1E001 /* Codec.cpp */; };
+		D9E110042F10010000B1E001 /* Codec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D9E110132F10010000B1E001 /* Codec.cpp */; };
+		D9E110052F10010000B1E001 /* wrap_Ble.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D9E110152F10010000B1E001 /* wrap_Ble.cpp */; };
+		D9E110062F10010000B1E001 /* wrap_Ble.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D9E110152F10010000B1E001 /* wrap_Ble.cpp */; };
+		D9E110072F10010000B1E001 /* Ble.mm in Sources */ = {isa = PBXBuildFile; fileRef = D9E110182F10010000B1E001 /* Ble.mm */; };
+		D9E110082F10010000B1E001 /* Ble.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D9E1101B2F10010000B1E001 /* Ble.cpp */; };
 		D93660F82D1C727C00C0EC4B /* Touch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D93660F72D1C727C00C0EC4B /* Touch.cpp */; };
 		D93660F92D1C727C00C0EC4B /* Touch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D93660F72D1C727C00C0EC4B /* Touch.cpp */; };
 		D943E58E2A24D56000D80361 /* PhysfsIo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D943E58C2A24D56000D80361 /* PhysfsIo.cpp */; };
@@ -2322,6 +2330,16 @@
 		FAFEB29628F210550025D7D0 /* unixdgram.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = unixdgram.h; sourceTree = "<group>"; };
 		FAFEB29728F210550025D7D0 /* unixstream.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = unixstream.c; sourceTree = "<group>"; };
 		FAFEB29828F210550025D7D0 /* unixstream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = unixstream.h; sourceTree = "<group>"; };
+		D9E110112F10010000B1E001 /* Ble.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Ble.cpp; sourceTree = "<group>"; };
+		D9E110122F10010000B1E001 /* Ble.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = Ble.h; sourceTree = "<group>"; };
+		D9E110132F10010000B1E001 /* Codec.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Codec.cpp; sourceTree = "<group>"; };
+		D9E110142F10010000B1E001 /* Codec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = Codec.h; sourceTree = "<group>"; };
+		D9E110152F10010000B1E001 /* wrap_Ble.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wrap_Ble.cpp; sourceTree = "<group>"; };
+		D9E110162F10010000B1E001 /* wrap_Ble.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = wrap_Ble.h; sourceTree = "<group>"; };
+		D9E110182F10010000B1E001 /* Ble.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = Ble.mm; sourceTree = "<group>"; };
+		D9E110192F10010000B1E001 /* Ble.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = Ble.h; sourceTree = "<group>"; };
+		D9E1101B2F10010000B1E001 /* Ble.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Ble.cpp; sourceTree = "<group>"; };
+		D9E1101C2F10010000B1E001 /* Ble.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = Ble.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -2405,6 +2423,39 @@
 				D9DB6E332B4B41100037A1F6 /* ResourceLimits.cpp */,
 			);
 			path = ResourceLimits;
+			sourceTree = "<group>";
+		};
+		D9E1100A2F10010000B1E001 /* ble */ = {
+			isa = PBXGroup;
+			children = (
+				D9E110112F10010000B1E001 /* Ble.cpp */,
+				D9E110122F10010000B1E001 /* Ble.h */,
+				D9E110132F10010000B1E001 /* Codec.cpp */,
+				D9E110142F10010000B1E001 /* Codec.h */,
+				D9E110172F10010000B1E001 /* apple */,
+				D9E1101A2F10010000B1E001 /* sdl */,
+				D9E110152F10010000B1E001 /* wrap_Ble.cpp */,
+				D9E110162F10010000B1E001 /* wrap_Ble.h */,
+			);
+			path = ble;
+			sourceTree = "<group>";
+		};
+		D9E110172F10010000B1E001 /* apple */ = {
+			isa = PBXGroup;
+			children = (
+				D9E110192F10010000B1E001 /* Ble.h */,
+				D9E110182F10010000B1E001 /* Ble.mm */,
+			);
+			path = apple;
+			sourceTree = "<group>";
+		};
+		D9E1101A2F10010000B1E001 /* sdl */ = {
+			isa = PBXGroup;
+			children = (
+				D9E1101B2F10010000B1E001 /* Ble.cpp */,
+				D9E1101C2F10010000B1E001 /* Ble.h */,
+			);
+			path = sdl;
 			sourceTree = "<group>";
 		};
 		D9F0C2D32C680A5500BB2D25 /* generic */ = {
@@ -2728,6 +2779,7 @@
 			isa = PBXGroup;
 			children = (
 				FA0B7B3D1A95902C000E1D17 /* audio */,
+				D9E1100A2F10010000B1E001 /* ble */,
 				FACA02DF1F5E396B0084B28F /* data */,
 				FA0B7B521A95902C000E1D17 /* event */,
 				FA0B7B5A1A95902C000E1D17 /* filesystem */,
@@ -4656,6 +4708,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D9E110022F10010000B1E001 /* Ble.cpp in Sources */,
+				D9E110042F10010000B1E001 /* Codec.cpp in Sources */,
+				D9E110072F10010000B1E001 /* Ble.mm in Sources */,
+				D9E110062F10010000B1E001 /* wrap_Ble.cpp in Sources */,
 				FA0B7DE01A95902C000E1D17 /* wrap_Math.cpp in Sources */,
 				FA0B7DA91A95902C000E1D17 /* PVRHandler.cpp in Sources */,
 				FAE64A842071363100BC7981 /* physfs_archiver_iso9660.c in Sources */,
@@ -5089,6 +5145,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D9E110082F10010000B1E001 /* Ble.cpp in Sources */,
+				D9E110012F10010000B1E001 /* Ble.cpp in Sources */,
+				D9E110032F10010000B1E001 /* Codec.cpp in Sources */,
+				D9E110052F10010000B1E001 /* wrap_Ble.cpp in Sources */,
 				217DFBDD1D9F6D490055D849 /* compat.c in Sources */,
 				FA0B7DDF1A95902C000E1D17 /* wrap_Math.cpp in Sources */,
 				FA0B7DA81A95902C000E1D17 /* PVRHandler.cpp in Sources */,

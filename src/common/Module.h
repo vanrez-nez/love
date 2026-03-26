@@ -40,6 +40,7 @@ public:
 	{
 		M_UNKNOWN = -1, // Use this for modules outside of LOVE's source code.
 		M_AUDIO,
+		M_BLE,
 		M_DATA,
 		M_EVENT,
 		M_FILESYSTEM,

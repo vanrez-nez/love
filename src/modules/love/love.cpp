@@ -111,6 +111,9 @@ extern "C"
 #if defined(LOVE_ENABLE_AUDIO)
 	extern int luaopen_love_audio(lua_State*);
 #endif
+#if defined(LOVE_ENABLE_BLE)
+	extern int luaopen_love_ble(lua_State*);
+#endif
 #if defined(LOVE_ENABLE_DATA)
 	extern int luaopen_love_data(lua_State*);
 #endif
@@ -182,6 +185,9 @@ extern "C"
 static const luaL_Reg modules[] = {
 #if defined(LOVE_ENABLE_AUDIO)
 	{ "love.audio", luaopen_love_audio },
+#endif
+#if defined(LOVE_ENABLE_BLE)
+	{ "love.ble", luaopen_love_ble },
 #endif
 #if defined(LOVE_ENABLE_DATA)
 	{ "love.data", luaopen_love_data },
