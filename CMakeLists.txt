@@ -382,6 +382,53 @@ target_link_libraries(love_audio INTERFACE
 )
 
 #
+# love.ble
+#
+
+add_library(love_ble_root STATIC
+	src/modules/ble/Ble.cpp
+	src/modules/ble/Ble.h
+	src/modules/ble/Codec.cpp
+	src/modules/ble/Codec.h
+	src/modules/ble/wrap_Ble.cpp
+	src/modules/ble/wrap_Ble.h
+)
+target_link_libraries(love_ble_root PUBLIC
+	love_common
+	lovedep::Lua
+)
+
+if(ANDROID)
+	add_library(love_ble_android STATIC
+		src/modules/ble/android/Ble.cpp
+		src/modules/ble/android/Ble.h
+	)
+	target_link_libraries(love_ble_android PUBLIC
+		lovedep::Lua
+		lovedep::SDL
+	)
+elseif(APPLE AND NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+	add_library(love_ble_apple STATIC
+		src/modules/ble/apple/Ble.h
+		src/modules/ble/apple/Ble.mm
+	)
+	target_link_libraries(love_ble_apple PUBLIC
+		lovedep::Lua
+		objc
+		"-framework CoreBluetooth"
+		"-framework Foundation"
+	)
+endif()
+
+add_library(love_ble INTERFACE)
+target_link_libraries(love_ble INTERFACE love_ble_root)
+if(ANDROID)
+	target_link_libraries(love_ble INTERFACE love_ble_android)
+elseif(APPLE AND NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+	target_link_libraries(love_ble INTERFACE love_ble_apple)
+endif()
+
+#
 # love.data
 #
 
@@ -1913,6 +1960,7 @@ set_target_properties(liblove PROPERTIES
 set(LIBLOVE_DEPENDENCIES
 	love_common
 	love_audio
+	love_ble
 	love_data
 	love_event
 	love_filesystem

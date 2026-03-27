@@ -91,6 +91,10 @@
 		D9F0C2DB2C680A5500BB2D25 /* OpenSSLConnection.h in Headers */ = {isa = PBXBuildFile; fileRef = D9F0C2D12C680A5500BB2D25 /* OpenSSLConnection.h */; };
 		D9F0C2DC2C680A5500BB2D25 /* UnixLibraryLoader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D9F0C2D22C680A5500BB2D25 /* UnixLibraryLoader.cpp */; };
 		D9F0C2DD2C680A5500BB2D25 /* UnixLibraryLoader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D9F0C2D22C680A5500BB2D25 /* UnixLibraryLoader.cpp */; };
+		DB7DD40C2F761EE20012E16E /* wrap_Ble.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DB7DD40A2F761EE20012E16E /* wrap_Ble.cpp */; };
+		DB7DD40E2F761EE20012E16E /* Ble.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DB7DD4062F761EE20012E16E /* Ble.cpp */; };
+		DB7DD40F2F761EE20012E16E /* Codec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DB7DD4082F761EE20012E16E /* Codec.cpp */; };
+		DB7DD4102F761EE20012E16E /* Ble.mm in Sources */ = {isa = PBXBuildFile; fileRef = DB7DD4032F761EE20012E16E /* Ble.mm */; };
 		FA0A3A5F23366CE9001C269E /* floattypes.h in Headers */ = {isa = PBXBuildFile; fileRef = FA0A3A5D23366CE9001C269E /* floattypes.h */; };
 		FA0A3A6023366CE9001C269E /* floattypes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA0A3A5E23366CE9001C269E /* floattypes.cpp */; };
 		FA0A3A6123366CE9001C269E /* floattypes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA0A3A5E23366CE9001C269E /* floattypes.cpp */; };
@@ -1446,6 +1450,16 @@
 		D9F0C2D02C680A5500BB2D25 /* OpenSSLConnection.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OpenSSLConnection.cpp; sourceTree = "<group>"; };
 		D9F0C2D12C680A5500BB2D25 /* OpenSSLConnection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OpenSSLConnection.h; sourceTree = "<group>"; };
 		D9F0C2D22C680A5500BB2D25 /* UnixLibraryLoader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = UnixLibraryLoader.cpp; sourceTree = "<group>"; };
+		DB7DD3FF2F761EE20012E16E /* Ble.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Ble.h; sourceTree = "<group>"; };
+		DB7DD4002F761EE20012E16E /* Ble.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Ble.cpp; sourceTree = "<group>"; };
+		DB7DD4022F761EE20012E16E /* Ble.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Ble.h; sourceTree = "<group>"; };
+		DB7DD4032F761EE20012E16E /* Ble.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = Ble.mm; sourceTree = "<group>"; };
+		DB7DD4052F761EE20012E16E /* Ble.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Ble.h; sourceTree = "<group>"; };
+		DB7DD4062F761EE20012E16E /* Ble.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Ble.cpp; sourceTree = "<group>"; };
+		DB7DD4072F761EE20012E16E /* Codec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Codec.h; sourceTree = "<group>"; };
+		DB7DD4082F761EE20012E16E /* Codec.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Codec.cpp; sourceTree = "<group>"; };
+		DB7DD4092F761EE20012E16E /* wrap_Ble.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = wrap_Ble.h; sourceTree = "<group>"; };
+		DB7DD40A2F761EE20012E16E /* wrap_Ble.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = wrap_Ble.cpp; sourceTree = "<group>"; };
 		FA08F5AE16C7525600F007B5 /* liblove-macosx.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = "liblove-macosx.plist"; path = "macosx/liblove-macosx.plist"; sourceTree = "<group>"; };
 		FA0A3A5D23366CE9001C269E /* floattypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = floattypes.h; sourceTree = "<group>"; };
 		FA0A3A5E23366CE9001C269E /* floattypes.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = floattypes.cpp; sourceTree = "<group>"; };
@@ -2420,6 +2434,39 @@
 			path = generic;
 			sourceTree = "<group>";
 		};
+		DB7DD4012F761EE20012E16E /* android */ = {
+			isa = PBXGroup;
+			children = (
+				DB7DD3FF2F761EE20012E16E /* Ble.h */,
+				DB7DD4002F761EE20012E16E /* Ble.cpp */,
+			);
+			path = android;
+			sourceTree = "<group>";
+		};
+		DB7DD4042F761EE20012E16E /* apple */ = {
+			isa = PBXGroup;
+			children = (
+				DB7DD4022F761EE20012E16E /* Ble.h */,
+				DB7DD4032F761EE20012E16E /* Ble.mm */,
+			);
+			path = apple;
+			sourceTree = "<group>";
+		};
+		DB7DD40B2F761EE20012E16E /* ble */ = {
+			isa = PBXGroup;
+			children = (
+				DB7DD4012F761EE20012E16E /* android */,
+				DB7DD4042F761EE20012E16E /* apple */,
+				DB7DD4052F761EE20012E16E /* Ble.h */,
+				DB7DD4062F761EE20012E16E /* Ble.cpp */,
+				DB7DD4072F761EE20012E16E /* Codec.h */,
+				DB7DD4082F761EE20012E16E /* Codec.cpp */,
+				DB7DD4092F761EE20012E16E /* wrap_Ble.h */,
+				DB7DD40A2F761EE20012E16E /* wrap_Ble.cpp */,
+			);
+			path = ble;
+			sourceTree = "<group>";
+		};
 		FA08F5AC16C751BA00F007B5 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
@@ -2727,6 +2774,7 @@
 		FA0B7B3C1A95902C000E1D17 /* modules */ = {
 			isa = PBXGroup;
 			children = (
+				DB7DD40B2F761EE20012E16E /* ble */,
 				FA0B7B3D1A95902C000E1D17 /* audio */,
 				FACA02DF1F5E396B0084B28F /* data */,
 				FA0B7B521A95902C000E1D17 /* event */,
@@ -4931,6 +4979,10 @@
 				FA4F2C0C1DE936ED00CA37D7 /* select.c in Sources */,
 				FA0B7D8E1A95902C000E1D17 /* ddsHandler.cpp in Sources */,
 				FA0B7DFE1A95902C000E1D17 /* ChainShape.cpp in Sources */,
+				DB7DD40C2F761EE20012E16E /* wrap_Ble.cpp in Sources */,
+				DB7DD40E2F761EE20012E16E /* Ble.cpp in Sources */,
+				DB7DD40F2F761EE20012E16E /* Codec.cpp in Sources */,
+				DB7DD4102F761EE20012E16E /* Ble.mm in Sources */,
 				FAFEB29A28F210550025D7D0 /* unixdgram.c in Sources */,
 				FAE64A892071363100BC7981 /* physfs_archiver_vdf.c in Sources */,
 				FA15DFB21F9B8D840042AB22 /* TheoraVideoStream.cpp in Sources */,
