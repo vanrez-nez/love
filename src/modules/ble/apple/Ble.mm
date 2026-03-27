@@ -2960,8 +2960,11 @@ static uint32_t computeCRC32(const uint8_t *data, size_t length)
 	[_subscribedCentrals removeAllObjects];
 	[self cancelAllGraceTimers];
 
-	// Initialize roster with self as host (preserve existing non-host peers)
-	// First, update self in roster as host
+	// Remove old host from roster (mirroring spec Section 8.2 step 3)
+	if (_hostPeerId)
+		[self removeSessionPeer:_hostPeerId];
+
+	// Initialize roster with self as host
 	[self removeSessionPeer:_localPeerId];
 	[self addSessionPeer:_localPeerId isHost:YES status:@"connected"];
 
