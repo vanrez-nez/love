@@ -323,7 +323,6 @@ bool Codec::decodeValue(const uint8_t *data, size_t length, size_t &offset, Vari
 			table->pairs.push_back({Variant((double)(i + 1)), val});
 		}
 		out = Variant(table);
-		table->release();
 		return true;
 	}
 
@@ -359,7 +358,6 @@ bool Codec::decodeValue(const uint8_t *data, size_t length, size_t &offset, Vari
 			table->pairs.push_back({key, val});
 		}
 		out = Variant(table);
-		table->release();
 		return true;
 	}
 
