@@ -1381,11 +1381,11 @@ static LoveBlePacket *decodePacket(NSData *data)
 	                                               _transportChar, _maxClients,
 	                                               _peerCount, _roomName);
 
-	CBUUID *serviceUUID = [CBUUID UUIDWithString:kServiceUUID];
-
+	// Spec Section 3.3 step 3: iOS sets payload as Local Name only.
+	// Service UUID is NOT included — it causes iOS to truncate the Local Name
+	// below the 18-byte minimum, making the room invisible to Android scanners.
 	[_peripheralManager startAdvertising:@{
 		CBAdvertisementDataLocalNameKey: adPayload,
-		CBAdvertisementDataServiceUUIDsKey: @[serviceUUID]
 	}];
 }
 
