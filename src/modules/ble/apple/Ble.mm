@@ -3108,15 +3108,12 @@ static uint32_t computeCRC32(const uint8_t *data, size_t length)
 	love::ble::Ble::BleEvent event;
 	event.type = "session_migrating";
 	event.fields["session_id"] = makeStringVariant(migSessionId);
-	event.fields["successor_id"] = makeStringVariant(successorId);
+	event.fields["new_host_id"] = makeStringVariant(successorId);
 	_owner->pushEvent(event);
 
-	// Step 3: The BLE disconnect will trigger didDisconnectPeripheral,
-	// which will call beginMigrationReconnect via the Section 13 disconnect handler.
-	// However, if the host disconnects us before we get there, the disconnect handler
-	// will see _migrationInProgress and call beginMigrationReconnect.
-	// If the connection is still alive when the host departs, iOS will fire
-	// didDisconnectPeripheral automatically.
+	// Step 3: Disconnect from old host and proceed with migration reconnect (spec Section 8.4 step 3)
+	[self stopClientOnly];
+	[self beginMigrationReconnect];
 }
 
 // Spec Section 8.4: OnScanResultDuringMigration — called from didDiscoverPeripheral
