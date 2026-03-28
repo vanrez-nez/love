@@ -59,7 +59,7 @@ public:
 	static void JNICALL jniOnHosted(JNIEnv *env, jobject thiz, jstring sessionId, jstring peerId, jstring transport);
 	static void JNICALL jniOnJoined(JNIEnv *env, jobject thiz, jstring sessionId, jstring roomId, jstring peerId, jstring hostId, jstring transport);
 	static void JNICALL jniOnJoinFailed(JNIEnv *env, jobject thiz, jstring reason, jstring roomId);
-	static void JNICALL jniOnRoomFound(JNIEnv *env, jobject thiz, jstring roomId, jstring sessionId, jstring name, jstring transport, jint peerCount, jint max, jint rssi);
+	static void JNICALL jniOnRoomFound(JNIEnv *env, jobject thiz, jstring roomId, jstring sessionId, jstring name, jstring transport, jint peerCount, jint max, jint rssi, jint protoVersion, jboolean incompatible);
 	static void JNICALL jniOnRoomLost(JNIEnv *env, jobject thiz, jstring roomId);
 	static void JNICALL jniOnPeerJoined(JNIEnv *env, jobject thiz, jstring peerId);
 	static void JNICALL jniOnPeerLeft(JNIEnv *env, jobject thiz, jstring peerId, jstring reason);

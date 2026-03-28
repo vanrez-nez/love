@@ -110,7 +110,7 @@ static bool initJNI()
 			(void *)&Ble::jniOnJoined},
 		{"nativeOnJoinFailed", "(Ljava/lang/String;Ljava/lang/String;)V",
 			(void *)&Ble::jniOnJoinFailed},
-		{"nativeOnRoomFound", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;III)V",
+		{"nativeOnRoomFound", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IIIIZ)V",
 			(void *)&Ble::jniOnRoomFound},
 		{"nativeOnRoomLost", "(Ljava/lang/String;)V",
 			(void *)&Ble::jniOnRoomLost},
@@ -371,7 +371,8 @@ void JNICALL Ble::jniOnJoinFailed(JNIEnv *env, jobject thiz,
 
 void JNICALL Ble::jniOnRoomFound(JNIEnv *env, jobject thiz,
 	jstring jroomId, jstring jsessionId, jstring jname,
-	jstring jtransport, jint peerCount, jint max, jint rssi)
+	jstring jtransport, jint peerCount, jint max, jint rssi,
+	jint protoVersion, jboolean incompatible)
 {
 	if (!g_bleInstance) return;
 	std::string roomId = jstringToStd(env, jroomId);
@@ -388,6 +389,8 @@ void JNICALL Ble::jniOnRoomFound(JNIEnv *env, jobject thiz,
 	event.fields["peer_count"] = Variant((double)peerCount);
 	event.fields["max"] = Variant((double)max);
 	event.fields["rssi"] = Variant((double)rssi);
+	event.fields["proto_version"] = Variant((double)protoVersion);
+	event.fields["incompatible"] = Variant((bool)incompatible);
 	g_bleInstance->pushEvent(event);
 }
 

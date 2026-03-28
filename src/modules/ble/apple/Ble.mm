@@ -29,7 +29,8 @@
 
 static NSString *const kServiceUUID = @"4bdf6b6d-6b77-4b3f-9f4a-5a2d1499d641";
 static NSString *const kCharacteristicUUID = @"9e153f71-c2d0-4ee1-8b8d-090421bea607";
-static NSString *const kAdvertPrefix = @"LB1";
+static NSString *const kAdvertPrefix = @"LB";
+static const int kCurrentProtocolVersion = 4; // application-level protocol version (spec Section 3.1)
 
 // Timeouts and limits (spec Section 17)
 static const NSTimeInterval kRoomExpirySeconds = 4.0;
@@ -37,6 +38,7 @@ static const NSTimeInterval kAssemblyTimeoutSeconds = 15.0;
 static const NSTimeInterval kPendingClientTimeout = 5.0;
 static const NSTimeInterval kHeartbeatInterval = 2.0;
 static const NSTimeInterval kReconnectTimeoutSeconds = 10.0;
+static const NSTimeInterval kRecoveryHostProbeDuration = 1.5; // spec Section 8.2 step 7a
 static const int kMaxConcurrentAssembliesPerSource = 32;
 static const int kDedupExpiry = 5;
 static const int kDedupWindow = 64;
@@ -63,6 +65,8 @@ static const int kMaxPayloadLength = 65536;
 @property (nonatomic, assign) NSInteger rssi;
 @property (nonatomic, strong) NSDate *lastSeenAt;
 @property (nonatomic, strong) CBPeripheral *peripheral;
+@property (nonatomic, assign) int protoVersion;
+@property (nonatomic, assign) BOOL incompatible;
 @end
 
 @implementation LoveBleRoom
@@ -160,8 +164,8 @@ static NSString *encodeRoomAdvertisement(NSString *sessionId, NSString *hostPeer
                                           char transport, int maxClients, int peerCount,
                                           NSString *roomName)
 {
-	return [NSString stringWithFormat:@"LB1%@%@%c%d%d%@",
-		sessionId, hostPeerId, transport,
+	return [NSString stringWithFormat:@"LB%c%@%@%c%d%d%@",
+		(char)('0' + kCurrentProtocolVersion), sessionId, hostPeerId, transport,
 		maxClients, peerCount, roomName];
 }
 
@@ -171,11 +175,15 @@ static LoveBleRoom *decodeRoomFromString(NSString *str, NSString *roomId, NSInte
 	if (str == nil || str.length < 18)
 		return nil;
 
-	if (![str hasPrefix:@"LB1"])
+	if (![str hasPrefix:kAdvertPrefix])
 		return nil;
+
+	int protoVersion = [str characterAtIndex:2] - '0';
 
 	LoveBleRoom *room = [[LoveBleRoom alloc] init];
 	room.roomId = roomId;
+	room.protoVersion = protoVersion;
+	room.incompatible = (protoVersion != kCurrentProtocolVersion);
 	room.sessionId = [str substringWithRange:NSMakeRange(3, 6)];
 	room.hostPeerId = [str substringWithRange:NSMakeRange(9, 6)];
 	room.transport = [str characterAtIndex:15];
@@ -264,6 +272,8 @@ static void pushRoomFoundEvent(love::ble::Ble *owner, LoveBleRoom *room)
 	event.fields["peer_count"] = love::Variant((double)room.peerCount);
 	event.fields["max"] = love::Variant((double)room.maxClients);
 	event.fields["rssi"] = love::Variant((double)room.rssi);
+	event.fields["proto_version"] = love::Variant((double)room.protoVersion);
+	event.fields["incompatible"] = love::Variant((bool)room.incompatible);
 
 	owner->pushEvent(event);
 }
@@ -544,6 +554,9 @@ static LoveBlePacket *decodePacket(NSData *data)
 @property (nonatomic, assign) int migrationEpoch;
 @property (nonatomic, assign) BOOL becomingHost;
 @property (nonatomic, strong) NSTimer *migrationTimer;
+@property (nonatomic, strong) NSString *migrationOldHostId;   // spec Section 8.2: saved for probe comparison
+@property (nonatomic, assign) BOOL recoveryHostProbeActive;   // spec Section 8.2 step 7a
+@property (nonatomic, strong) NSTimer *recoveryHostProbeTimer;
 
 // ── Reconnect state (spec Section 7.1) ──
 @property (nonatomic, assign) BOOL reconnectInProgress;
@@ -1439,6 +1452,13 @@ static LoveBlePacket *decodePacket(NSData *data)
 
 	_discoveredRooms[roomId] = room;
 
+	// Recovery Host Probe (spec Section 8.2 step 7a) — check before other routing
+	if (_recoveryHostProbeActive)
+	{
+		[self onScanResultDuringRecoveryProbe:room];
+		return;
+	}
+
 	// Spec Section 7.1: If in reconnect scan, check for matching room
 	if (_reconnectInProgress && _reconnectScanInProgress)
 	{
@@ -1646,17 +1666,17 @@ static LoveBlePacket *decodePacket(NSData *data)
 		return;
 	}
 
-	// Step 3: If shouldEmit AND wasJoined AND transport is Resilient, attempt unexpected host recovery (spec Section 13 step 3)
-	if (shouldEmit && wasJoined && _transportChar == 's')
-	{
-		if ([self beginUnexpectedHostRecovery])
-			return;
-	}
-
-	// Step 4: If shouldEmit AND wasJoined, attempt client reconnect (spec Section 13 step 4)
+	// Step 3: If shouldEmit AND wasJoined, attempt client reconnect (spec Section 13 step 5)
 	if (shouldEmit && wasJoined)
 	{
 		if ([self beginClientReconnect])
+			return;
+	}
+
+	// Step 4: If shouldEmit AND wasJoined AND transport is Resilient, attempt unexpected host recovery (spec Section 13 step 6)
+	if (shouldEmit && wasJoined && _transportChar == 's')
+	{
+		if ([self beginUnexpectedHostRecovery])
 			return;
 	}
 
@@ -1775,8 +1795,8 @@ static LoveBlePacket *decodePacket(NSData *data)
 	else
 		helloSessionId = _joinedSessionId ?: @"";
 
-	// Step 5: Encode and send HELLO control packet
-	NSString *helloPayload = [NSString stringWithFormat:@"%@|%@", helloSessionId, joinIntent];
+	// Step 5: Encode and send HELLO control packet — "session_id|join_intent|proto_version" (spec Section 4.3)
+	NSString *helloPayload = [NSString stringWithFormat:@"%@|%@|%d", helloSessionId, joinIntent, kCurrentProtocolVersion];
 	NSData *payloadData = [helloPayload dataUsingEncoding:NSUTF8StringEncoding];
 
 	[self clientSendControl:@"hello" toPeerId:_hostPeerId payload:payloadData];
@@ -2124,7 +2144,8 @@ static LoveBlePacket *decodePacket(NSData *data)
 		return;
 	}
 
-	// Step 2: Parse payload — "session_id|join_intent"
+	// Step 2: Parse payload — "session_id|join_intent|proto_version" (spec Section 4.3)
+	// Missing proto_version field is treated as version 1 (spec Section 6.5)
 	NSString *payloadStr = [[NSString alloc] initWithData:packet.payload encoding:NSUTF8StringEncoding];
 	if (!payloadStr)
 	{
@@ -2135,6 +2156,9 @@ static LoveBlePacket *decodePacket(NSData *data)
 	NSArray<NSString *> *parts = [payloadStr componentsSeparatedByString:@"|"];
 	NSString *helloSessionId = (parts.count > 0) ? parts[0] : @"";
 	NSString *joinIntent = (parts.count > 1) ? parts[1] : @"fresh";
+	int clientProtoVersion = 1; // default if field absent
+	if (parts.count > 2 && parts[2].length > 0)
+		clientProtoVersion = (int)[parts[2] integerValue];
 
 	pushDiagnosticEvent(_owner, [NSString stringWithFormat:@"host: hello from %@ intent=%@ session=%@",
 		peerId, joinIntent, helloSessionId]);
@@ -2176,6 +2200,14 @@ static LoveBlePacket *decodePacket(NSData *data)
 	if ([joinIntent isEqualToString:@"migration_resume"] && !_migrationInProgress)
 	{
 		[self sendJoinRejected:deviceKey peerId:peerId reason:@"migration_mismatch"];
+		return;
+	}
+
+	// 3f: incompatible_version — protocol version mismatch (spec Section 6.5)
+	if (clientProtoVersion != kCurrentProtocolVersion)
+	{
+		[self sendJoinRejected:deviceKey peerId:peerId reason:@"incompatible_version"];
+		// iOS cannot force-disconnect a CBCentral; client will disconnect after receiving rejection
 		return;
 	}
 
@@ -2847,6 +2879,20 @@ static uint32_t computeCRC32(const uint8_t *data, size_t length)
 - (void)onReconnectTimeout
 {
 	pushDiagnosticEvent(_owner, @"reconnect: timeout expired");
+
+	// Spec Section 7.1 OnReconnectTimeout: for Resilient transport, clear reconnect scan state
+	// (preserve joinedSessionId, hostPeerId, sessionPeers) and attempt recovery before giving up.
+	if (_transportChar == 's')
+	{
+		[_reconnectTimer invalidate];
+		_reconnectTimer = nil;
+		_reconnectScanInProgress = NO;
+		_reconnectJoinInProgress = NO;
+		[self stopScan];
+		// joinedSessionId, hostPeerId, sessionPeers intentionally preserved for recovery
+		if ([self beginUnexpectedHostRecovery])
+			return;
+	}
 	[self failReconnect];
 }
 
@@ -2893,16 +2939,91 @@ static uint32_t computeCRC32(const uint8_t *data, size_t length)
 	_migrationInProgress = YES;
 	_migrationSuccessorId = successor;
 	_migrationSessionId = [_joinedSessionId copy];
+	_migrationOldHostId = [oldHostId copy];
 	_migrationMaxClients = 7; // default, will be overridden if migrating from known state
 	_migrationRoomName = _roomName ?: @"Room";
 	_migrationEpoch = _membershipEpoch;
 	_becomingHost = [successor isEqualToString:_localPeerId];
 
-	// Step 9: BeginMigrationReconnect
+	// Step 7a: Recovery Host Probe (spec Section 8.2) — when we are the elected successor,
+	// scan for kRecoveryHostProbeDuration to confirm old host is gone and no other peer
+	// has already started advertising before we commit to the host role.
+	if (_becomingHost)
+	{
+		pushDiagnosticEvent(_owner, @"migration: starting recovery host probe");
+		_recoveryHostProbeActive = YES;
+		[self startScan];
+		_recoveryHostProbeTimer = [NSTimer scheduledTimerWithTimeInterval:kRecoveryHostProbeDuration
+		                                                          target:self
+		                                                        selector:@selector(onRecoveryHostProbeTimeout)
+		                                                        userInfo:nil
+		                                                         repeats:NO];
+		return YES;
+	}
+
+	// Step 9: BeginMigrationReconnect (non-host path goes directly here)
 	[self beginMigrationReconnect];
 
 	// Step 10: Return YES
 	return YES;
+}
+
+- (void)onRecoveryHostProbeTimeout
+{
+	if (!_recoveryHostProbeActive) return;
+	_recoveryHostProbeActive = NO;
+	_recoveryHostProbeTimer = nil;
+	pushDiagnosticEvent(_owner, @"migration: probe timeout, old host not found — proceeding to host");
+	[self beginMigrationReconnect];
+}
+
+- (void)onScanResultDuringRecoveryProbe:(LoveBleRoom *)room
+{
+	if (!_migrationSessionId || ![room.sessionId isEqualToString:_migrationSessionId])
+		return;
+
+	if ([room.hostPeerId isEqualToString:_migrationOldHostId])
+	{
+		// Old host is still alive — abort self-election, reconnect to it
+		pushDiagnosticEvent(_owner, @"migration: probe found old host still alive, reconnecting");
+		[self cancelRecoveryHostProbe];
+		[self clearMigrationState];
+		[self beginClientReconnect];
+	}
+	else if ([self isSessionPeer:room.hostPeerId])
+	{
+		// Another session peer is already advertising as host — connect to them
+		pushDiagnosticEvent(_owner, [NSString stringWithFormat:@"migration: probe found peer %@ already hosting, connecting", room.hostPeerId]);
+		[self cancelRecoveryHostProbe];
+		_migrationSuccessorId = room.hostPeerId;
+		_hostPeerId = room.hostPeerId;
+		_becomingHost = NO;
+		[self stopScan];
+		[self connectToRoom:room migrationJoin:YES];
+	}
+	// Otherwise: ignore — keep scanning until probe timer fires
+}
+
+- (void)cancelRecoveryHostProbe
+{
+	_recoveryHostProbeActive = NO;
+	[_recoveryHostProbeTimer invalidate];
+	_recoveryHostProbeTimer = nil;
+	[self stopScan];
+}
+
+- (void)clearMigrationState
+{
+	_migrationInProgress = NO;
+	_becomingHost = NO;
+	_migrationSuccessorId = nil;
+	_migrationSessionId = nil;
+	_migrationOldHostId = nil;
+	_migrationMaxClients = 0;
+	_migrationRoomName = nil;
+	_migrationEpoch = 0;
+	[_migrationTimer invalidate];
+	_migrationTimer = nil;
 }
 
 // ──────────────────────────────────────────────────
@@ -3124,12 +3245,22 @@ static uint32_t computeCRC32(const uint8_t *data, size_t length)
 {
 	if (!_migrationInProgress || _becomingHost)
 		return;
+	if (!_migrationSessionId || ![room.sessionId isEqualToString:_migrationSessionId])
+		return;
 
-	// Looking for the successor's advertisement with the same session ID
-	if ([room.hostPeerId isEqualToString:_migrationSuccessorId] &&
-	    [room.sessionId isEqualToString:_migrationSessionId])
+	// Step 2: elected successor is advertising — connect (spec Section 8.4 step 2)
+	if (_migrationSuccessorId && [room.hostPeerId isEqualToString:_migrationSuccessorId])
 	{
 		pushDiagnosticEvent(_owner, @"migration: found successor's room, connecting");
+		[self connectToRoom:room migrationJoin:YES];
+	}
+	// Step 3: "first advertiser wins" — a different known session member got there first
+	// (spec Section 8.4 step 3, applies to all migration paths)
+	else if ([self isSessionPeer:room.hostPeerId])
+	{
+		pushDiagnosticEvent(_owner, [NSString stringWithFormat:@"migration: first-advertiser-wins, peer %@ hosting instead", room.hostPeerId]);
+		_migrationSuccessorId = room.hostPeerId;
+		_hostPeerId = room.hostPeerId;
 		[self connectToRoom:room migrationJoin:YES];
 	}
 }
