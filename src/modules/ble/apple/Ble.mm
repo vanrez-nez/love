@@ -43,7 +43,6 @@ static const int kMaxConcurrentAssembliesPerSource = 32;
 static const int kDedupExpiry = 5;
 static const int kDedupWindow = 64;
 static const uint8_t kProtocolVersion = 1;
-static const int kDesiredMTU = 185;
 static const int kDefaultMTU = 23;
 static const int kATTOverhead = 3;
 static const int kFragmentHeaderSize = 5;
