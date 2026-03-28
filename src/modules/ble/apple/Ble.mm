@@ -38,6 +38,8 @@ static const NSTimeInterval kAssemblyTimeoutSeconds = 15.0;
 static const NSTimeInterval kPendingClientTimeout = 5.0;
 static const NSTimeInterval kHeartbeatInterval = 2.0;
 static const NSTimeInterval kReconnectTimeoutSeconds = 10.0;
+static const NSTimeInterval kDepartureSendTimeoutSeconds = 0.1;
+static const NSTimeInterval kDepartureIntentExpirySeconds = 2.0;
 static const NSTimeInterval kRecoveryHostProbeDuration = 1.5; // spec Section 8.2 step 7a
 static const int kMaxConcurrentAssembliesPerSource = 32;
 static const int kDedupExpiry = 5;
@@ -501,6 +503,8 @@ static LoveBlePacket *decodePacket(NSData *data)
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *deviceMTUs;
 // Host: subscribed centrals for notifications
 @property (nonatomic, strong) NSMutableSet<CBCentral *> *subscribedCentrals;
+// Host: recent departure intents (peerId -> NSDate)
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSDate *> *departureIntents;
 
 // ── Client state ──
 @property (nonatomic, assign) BOOL clientJoined;
@@ -515,6 +519,9 @@ static LoveBlePacket *decodePacket(NSData *data)
 // Client: write queue (spec Section 15.1)
 @property (nonatomic, strong) NSMutableArray<NSData *> *clientWriteQueue;
 @property (nonatomic, assign) BOOL writeInFlight;
+@property (nonatomic, strong) NSMutableArray<NSData *> *departureWriteFragments;
+@property (nonatomic, assign) BOOL departureSendPending;
+@property (nonatomic, strong) NSTimer *departureSendTimer;
 
 // ── Scan state ──
 @property (nonatomic, assign) BOOL scanning;
@@ -585,6 +592,7 @@ static LoveBlePacket *decodePacket(NSData *data)
 		_clientJoined = NO;
 		_clientLeaving = NO;
 		_writeInFlight = NO;
+		_departureSendPending = NO;
 		_negotiatedMTU = kDefaultMTU;
 		_nonceCounter = 0;
 		_messageIdCounter = 0;
@@ -604,7 +612,9 @@ static LoveBlePacket *decodePacket(NSData *data)
 		_notificationQueues = [NSMutableDictionary dictionary];
 		_deviceMTUs = [NSMutableDictionary dictionary];
 		_subscribedCentrals = [NSMutableSet set];
+		_departureIntents = [NSMutableDictionary dictionary];
 		_clientWriteQueue = [NSMutableArray array];
+		_departureWriteFragments = [NSMutableArray array];
 		_sessionPeers = [NSMutableArray array];
 		_assemblerBySource = [NSMutableDictionary dictionary];
 		_dedupList = [NSMutableArray array];
@@ -626,6 +636,8 @@ static LoveBlePacket *decodePacket(NSData *data)
 	[self stopRoomExpiryTimer];
 	[self stopHeartbeat];
 	[self cancelAllGraceTimers];
+	[_departureSendTimer invalidate];
+	_departureSendTimer = nil;
 	[_migrationTimer invalidate];
 	_migrationTimer = nil;
 	[_reconnectTimer invalidate];
@@ -1167,6 +1179,56 @@ static LoveBlePacket *decodePacket(NSData *data)
 	[self clientSendPacket:packetData];
 }
 
+- (void)completeClientLeaveAfterDeparture
+{
+	if (!_departureSendPending)
+		return;
+
+	_departureSendPending = NO;
+	[_departureWriteFragments removeAllObjects];
+	[_departureSendTimer invalidate];
+	_departureSendTimer = nil;
+
+	[self finishLeave:nil];
+}
+
+- (void)handleDepartureSendTimeout:(__unused NSTimer *)timer
+{
+	[self completeClientLeaveAfterDeparture];
+}
+
+- (void)sendClientLeavingAndLeave
+{
+	if (!_hostPeerId || !_connectedPeripheral || !_remoteCharacteristic)
+	{
+		[self finishLeave:nil];
+		return;
+	}
+
+	NSData *packetData = buildPacket(@"control", _localPeerId, _hostPeerId, @"client_leaving",
+	                                  0, nullptr, 0);
+	int payloadLimit = _negotiatedMTU - kATTOverhead;
+	NSArray<NSData *> *fragments = [self fragmentPacket:packetData payloadLimit:payloadLimit];
+	if (!fragments || fragments.count == 0)
+	{
+		[self finishLeave:nil];
+		return;
+	}
+
+	_clientLeaving = YES;
+	_departureSendPending = YES;
+	[_departureWriteFragments removeAllObjects];
+	[_departureWriteFragments addObjectsFromArray:fragments];
+	[_departureSendTimer invalidate];
+	_departureSendTimer = [NSTimer scheduledTimerWithTimeInterval:kDepartureSendTimeoutSeconds
+	                                                       target:self
+	                                                     selector:@selector(handleDepartureSendTimeout:)
+	                                                     userInfo:nil
+	                                                      repeats:NO];
+
+	[self enqueueClientWrites:fragments];
+}
+
 - (void)clientSendData:(NSString *)msgType toPeerId:(NSString *)toPeerId
                payload:(const uint8_t *)payload payloadLen:(uint32_t)payloadLen
 {
@@ -1588,6 +1650,10 @@ static LoveBlePacket *decodePacket(NSData *data)
 // Stop client GATT connection without full leave
 - (void)stopClientOnly
 {
+	[_departureSendTimer invalidate];
+	_departureSendTimer = nil;
+	_departureSendPending = NO;
+	[_departureWriteFragments removeAllObjects];
 	if (_connectedPeripheral)
 	{
 		[_centralManager cancelPeripheralConnection:_connectedPeripheral];
@@ -1598,6 +1664,15 @@ static LoveBlePacket *decodePacket(NSData *data)
 	_writeInFlight = NO;
 	[_clientWriteQueue removeAllObjects];
 	_negotiatedMTU = kDefaultMTU;
+}
+
+- (void)finishLeaveClient
+{
+	[self stopClientOnly];
+	[self clearDedupState];
+	[_assemblerBySource removeAllObjects];
+	_clientJoined = NO;
+	_clientLeaving = YES;
 }
 
 // ──────────────────────────────────────────────────
@@ -1682,7 +1757,7 @@ static LoveBlePacket *decodePacket(NSData *data)
 	// Step 5: Emit events (spec Section 13 step 5)
 	if (shouldEmit)
 	{
-		[self finishLeave:nil];
+		[self finishLeaveClient];
 		if (wasJoined)
 		{
 			love::ble::Ble::BleEvent event;
@@ -1696,8 +1771,11 @@ static LoveBlePacket *decodePacket(NSData *data)
 			NSString *detail = error ? error.localizedDescription : @"connection_lost";
 			pushErrorEvent(_owner, @"join_failed", detail);
 		}
+		return;
 	}
-	// Step 6: Silent cleanup (implicit — stopClientOnly already called)
+
+	// Step 6: Silent cleanup (spec Section 13 step 8)
+	[self finishLeaveClient];
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverServices:(NSError *)error
@@ -2036,7 +2114,12 @@ static LoveBlePacket *decodePacket(NSData *data)
 {
 	// Step 6a: Remove written fragment
 	if (_clientWriteQueue.count > 0)
+	{
+		NSData *writtenFragment = _clientWriteQueue.firstObject;
+		if (_departureWriteFragments.count > 0 && writtenFragment == _departureWriteFragments.firstObject)
+			[_departureWriteFragments removeObjectAtIndex:0];
 		[_clientWriteQueue removeObjectAtIndex:0];
+	}
 
 	// Step 6b: Clear in-flight
 	_writeInFlight = NO;
@@ -2045,12 +2128,17 @@ static LoveBlePacket *decodePacket(NSData *data)
 	{
 		// Step 6c: Write failed — clear queue and emit error
 		[_clientWriteQueue removeAllObjects];
+		[_departureWriteFragments removeAllObjects];
 		pushErrorEvent(_owner, @"write_failed", error.localizedDescription);
+		if (_departureSendPending)
+			[self completeClientLeaveAfterDeparture];
 		return;
 	}
 
 	// Step 6d: Pump next
 	[self pumpClientWriteQueue];
+	if (_departureSendPending && _departureWriteFragments.count == 0)
+		[self completeClientLeaveAfterDeparture];
 }
 
 // ──────────────────────────────────────────────────
@@ -2110,6 +2198,12 @@ static LoveBlePacket *decodePacket(NSData *data)
 		if ([packet.msgType isEqualToString:@"hello"])
 		{
 			[self onHelloReceived:deviceKey packet:packet central:central];
+		}
+		else if ([packet.msgType isEqualToString:@"client_leaving"])
+		{
+			NSString *peerId = packet.fromPeerId;
+			if (peerId.length > 0 && _connectedClients[peerId] != nil)
+				_departureIntents[peerId] = [NSDate date];
 		}
 		else if ([packet.msgType isEqualToString:@"roster_request"])
 		{
@@ -2212,6 +2306,7 @@ static LoveBlePacket *decodePacket(NSData *data)
 
 	// Step 4: Remove from pending clients
 	[_pendingClients removeObjectForKey:deviceKey];
+	[_departureIntents removeObjectForKey:peerId];
 
 	// Step 5: Bind device -> peer
 	_devicePeerMap[deviceKey] = peerId;
@@ -2426,7 +2521,34 @@ static LoveBlePacket *decodePacket(NSData *data)
 		// 3a: Remove from connected clients
 		[_connectedClients removeObjectForKey:peerId];
 
-		// 3b: If hosting and not in migration departure, begin grace
+		NSDate *departureAt = _departureIntents[peerId];
+		[_departureIntents removeObjectForKey:peerId];
+		if (departureAt && [[NSDate date] timeIntervalSinceDate:departureAt] <= kDepartureIntentExpirySeconds)
+		{
+			[self removeSessionPeer:peerId];
+			_membershipEpoch++;
+
+			love::ble::Ble::BleEvent event;
+			event.type = "peer_left";
+			event.fields["peer_id"] = makeStringVariant(peerId);
+			event.fields["reason"] = love::Variant("left", 4);
+			_owner->pushEvent(event);
+
+			NSData *reasonData = [@"left" dataUsingEncoding:NSUTF8StringEncoding];
+			NSData *peerLeftPacket = buildPacket(@"control", peerId, @"", @"peer_left",
+			                                    0, (const uint8_t *)reasonData.bytes, (uint32_t)reasonData.length);
+			for (NSString *otherPeerId in [_connectedClients allKeys])
+			{
+				[self sendDataToPeer:otherPeerId packetData:peerLeftPacket];
+			}
+
+			[self broadcastControl:@"roster_snapshot" payload:[self encodeRosterSnapshotPayload]];
+			_peerCount = [self connectedClientCount];
+			[self advertiseRoom];
+			return;
+		}
+
+		// 3c: If hosting and not in migration departure, begin grace
 		if (_hosting && !_migrationInProgress)
 		{
 			[self beginPeerReconnectGrace:peerId];
@@ -2865,7 +2987,7 @@ static uint32_t computeCRC32(const uint8_t *data, size_t length)
 	[self stopScan];
 
 	// Step 4: Call finishLeave(nil)
-	[self finishLeave:nil];
+	[self finishLeaveClient];
 
 	// Step 5: Emit session_ended "host_lost"
 	love::ble::Ble::BleEvent event;
@@ -3278,6 +3400,12 @@ static uint32_t computeCRC32(const uint8_t *data, size_t length)
 			return;
 	}
 
+	if (!_hosting && _clientJoined)
+	{
+		[self sendClientLeavingAndLeave];
+		return;
+	}
+
 	// Spec Section 6.6 step 2: Call finishLeave with reason
 	[self finishLeave:(_hosting && _connectedClients.count > 0) ? @"host_left" : nil];
 }
@@ -3288,6 +3416,11 @@ static uint32_t computeCRC32(const uint8_t *data, size_t length)
 	// Step 1: Cancel all timers (grace, heartbeat, migration, reconnect)
 	[self cancelAllGraceTimers];
 	[self stopHeartbeat];
+	[_departureSendTimer invalidate];
+	_departureSendTimer = nil;
+	_departureSendPending = NO;
+	[_departureWriteFragments removeAllObjects];
+	[_departureIntents removeAllObjects];
 	[_migrationTimer invalidate];
 	_migrationTimer = nil;
 	[_reconnectTimer invalidate];
@@ -3345,7 +3478,6 @@ static uint32_t computeCRC32(const uint8_t *data, size_t length)
 	_peerCount = 0;
 	_membershipEpoch = 0;
 	_clientJoined = NO;
-	_clientLeaving = NO;
 
 	// Clear migration state
 	_migrationInProgress = NO;
